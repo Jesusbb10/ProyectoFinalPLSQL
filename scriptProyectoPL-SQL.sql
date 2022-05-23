@@ -139,14 +139,16 @@ where id = idLibro;
 
 begin
  for registro in titulo_lib loop
- dbms_output.put_line(registro.titulo);
+ dbms_output.put_line('El titulo del libro es: '|| registro.titulo);
 end loop;
- 
+ EXCEPTION
+	WHEN NO_DATA_FOUND THEN 
+		dbms_output.put_line('ERROR. No se encuentra ninguna fila');
 
 end mostrar_libros;
 /
 
-exec mostrar_libros(2);
+exec mostrar_libros('&idLibro');
 
 /*Procedimiento que actualiza una columna de la tabla estudiantes mediante un id*/
 create or replace procedure actualizar_estudiantes(idEst estudiante.id%type, nombreEst estudiante.nombre%type, apellidoEst estudiante.apellido%type, cursoEst estudiante.curso%type)
@@ -157,12 +159,14 @@ begin
 update estudiante 
 set nombre = nombreEst, apellido = apellidoEst, curso = cursoEst
 where id = idEst;
-
+EXCEPTION
+	WHEN NO_DATA_FOUND THEN 
+		dbms_output.put_line('ERROR. No se encuentra ninguna fila');
 end actualizar_estudiantes;
 /
 
 BEGIN
- actualizar_estudiantes(10, 'Javier', 'Bueno', '1B');
+ actualizar_estudiantes('&id', '&nombre', '&apellido', '&curso');
 END;
 /
 
@@ -172,45 +176,58 @@ END;
 create or replace function mostrar_alquiler(idEst estudiante.id%type)
 return varchar2
 as
-cursor alquiler is
-select titulo, nombre from libros lib, estudiante est, prestamos pr
+tituloLibro libros.titulo%type;
+cursor c_alquiler is
+select titulo from libros lib, estudiante est, prestamos pr
 where est.id = idEst and est.id = pr.idEstudiante and pr.idLibro = lib.id;
 
 begin
- for registro in alquiler loop
- return registro.titulo;
-end loop;
-
-end mostrar_alquiler;
+ open c_alquiler;
+ loop
+ fetch c_alquiler into tituloLibro;
+ exit when c_alquiler%notfound;
+ end loop;
+ return tituloLibro;
+ 
+EXCEPTION
+	WHEN NO_DATA_FOUND THEN 
+		dbms_output.put_line('ERROR. No se encuentra ninguna fila');
+end;
 /
-select mostrar_alquiler(10) from dual;
+select mostrar_alquiler('&idEstudiante') from dual;
 
 /*Función que muestra el nombre de la editorial que tiene el libro pasado por parametros*/
 
 create or replace function mostrar_editorial(idLibro libros.id%type)
 return varchar2
 as
-cursor c_editorial is
-select nombre, titulo from libros lib, editoriales edi
+nombreEditorial editoriales.nombre%type;
+cursor c_editorial is 
+select nombre from libros lib, editoriales edi
 where lib.id =idLibro and edi.id = lib.idEditorial;
 
 begin
-
- for registro in c_editorial loop
- return registro.nombre;
-
-end loop;
-
-end mostrar_editorial;
+open c_editorial;
+loop
+ fetch c_editorial into nombreEditorial;
+ exit when c_editorial%notfound;
+ end loop;
+ return nombreEditorial;
+ 
+EXCEPTION
+	WHEN NO_DATA_FOUND THEN 
+		dbms_output.put_line('ERROR. No se encuentra ninguna fila');
+end;
 /
-select mostrar_editorial(6) from dual;
+
+select mostrar_editorial('&idLibro') from dual;
 
 
 /*Bloque Anónimo*/
 
 declare
-alquiler varchar2(40);
-editorial varchar2(15);
+tituloLibro varchar2;
+nombreEditorial varchar2;
 begin 
 dbms_output.put_line('El titulo del libro es: ');
 mostrar_libros('&idLibro');
@@ -218,8 +235,8 @@ dbms_output.put_line('');
 actualizar_estudiantes('&id', '&nombre', '&apellido', '&curso');
 dbms_output.put_line('Estudiante actualizado');
 dbms_output.put_line('');
-select mostrar_alquiler('&idEstudiante') into alquiler from dual;
+select mostrar_alquiler('&idEstudiante') into tituloLibro from dual;
 dbms_output.put_line('');
-select mostrar_editorial('&idLibro') into editorial from dual;
+select mostrar_editorial('&idLibro') into nombreEditorial from dual;
 end;
 /
